@@ -40,14 +40,20 @@ public class ReportService {
     }
 
     private ReportResponse build(LocalDate from, LocalDate to, List<DailyClosing> c) {
-        BigDecimal expected=ZERO,cash=ZERO,upi=ZERO,udhar=ZERO,actual=ZERO,variance=ZERO,expenses=ZERO,profit=ZERO;
+        BigDecimal expected=ZERO,cash=ZERO,upi=ZERO,udhar=ZERO,repaymentCash=ZERO,repaymentUpi=ZERO;
+        BigDecimal actual=ZERO,variance=ZERO,expenses=ZERO,profit=ZERO,posTotal=ZERO,posCash=ZERO,posUpi=ZERO,posUdhar=ZERO;
         var days = new java.util.ArrayList<DailyReportRow>();
         for (DailyClosing x : c) {
             expected=expected.add(x.getExpectedSales()); cash=cash.add(x.getCash()); upi=upi.add(x.getUpi()); udhar=udhar.add(x.getUdhar());
+            repaymentCash=repaymentCash.add(x.getCustomerRepaymentCash()); repaymentUpi=repaymentUpi.add(x.getCustomerRepaymentUpi());
             actual=actual.add(x.getActualCollection()); variance=variance.add(x.getVariance()); expenses=expenses.add(x.getExpensesTotal()); profit=profit.add(x.getNetProfit());
-            days.add(new DailyReportRow(x.getBusinessDate(),x.getExpectedSales(),x.getCash(),x.getUpi(),x.getUdhar(),x.getActualCollection(),x.getVariance(),x.getExpensesTotal(),x.getNetProfit()));
+            posTotal=posTotal.add(x.getPosSalesTotal()); posCash=posCash.add(x.getPosCash()); posUpi=posUpi.add(x.getPosUpi()); posUdhar=posUdhar.add(x.getPosUdhar());
+            days.add(new DailyReportRow(x.getBusinessDate(),x.getExpectedSales(),x.getCash(),x.getUpi(),x.getUdhar(),
+                    x.getCustomerRepaymentCash(),x.getCustomerRepaymentUpi(),x.getActualCollection(),x.getVariance(),
+                    x.getExpensesTotal(),x.getNetProfit(),x.getPosSalesTotal(),x.getPosCash(),x.getPosUpi(),x.getPosUdhar()));
         }
-        return new ReportResponse(new ReportSummaryResponse(from,to,c.size(),expected,cash,upi,udhar,actual,variance,expenses,profit), days);
+        return new ReportResponse(new ReportSummaryResponse(from,to,c.size(),expected,cash,upi,udhar,
+                repaymentCash,repaymentUpi,actual,variance,expenses,profit,posTotal,posCash,posUpi,posUdhar), days);
     }
     private void validateRange(LocalDate from, LocalDate to) {
         if (from == null || to == null) throw new IllegalArgumentException("Both from and to dates are required");

@@ -19,9 +19,11 @@ public class NotificationService {
   String key="auto:"+type+":"+UUID.randomUUID(); return enqueue(shop,channel,type,recipient,subject,message,key);
  }
  @Transactional(readOnly=true) public List<NotificationResponse> latest(){return repo.findTop100ByShopIdOrderByCreatedAtDesc(current.shopId()).stream().map(NotificationResponse::from).toList();}
- @Transactional public NotificationResponse retry(UUID id){Notification n=repo.findByIdAndShopId(id,current.shopId()).orElseThrow(()->new ResourceNotFoundException("Notification not found")); if(n.getStatus()==NotificationStatus.SENT) throw new BusinessException("Notification was already sent");
-  NotificationOutbox o=outbox.findByEventKey("retry:"+id+":"+UUID.randomUUID()).orElse(null); // intentionally create a fresh delivery event
-  NotificationOutbox fresh=new NotificationOutbox(); fresh.setEventKey("retry:"+id+":"+UUID.randomUUID()); fresh.setNotification(n); fresh.setStatus(NotificationOutboxStatus.PENDING); fresh.setAttempts(0); fresh.setNextAttemptAt(Instant.now()); outbox.save(fresh); n.setStatus(NotificationStatus.QUEUED); n.setLastError(null); return NotificationResponse.from(repo.save(n));
+ @Transactional public NotificationResponse retry(UUID id){Notification n=repo.findByIdAndShopId(id,current.shopId()).orElseThrow(()->new ResourceNotFoundException("Notification not found"));
+  NotificationOutbox item=outbox.findByNotificationIdForUpdate(id).orElseThrow(()->new BusinessException("Notification cannot be retried"));
+  if(item.getStatus()!=NotificationOutboxStatus.DEAD_LETTER || n.getStatus()!=NotificationStatus.DEAD_LETTER) throw new BusinessException("Only dead-letter notifications can be retried");
+  item.setStatus(NotificationOutboxStatus.PENDING); item.setAttempts(0); item.setNextAttemptAt(Instant.now()); item.setLockedAt(null); item.setCompletedAt(null); item.setLastError(null); outbox.save(item);
+  n.setStatus(NotificationStatus.QUEUED); n.setAttempts(0); n.setLastError(null); return NotificationResponse.from(repo.save(n));
  }
  private NotificationResponse enqueue(com.dukankhata.shop.Shop shop,NotificationChannel channel,NotificationType type,String recipient,String subject,String message,String eventKey){
   Notification n=new Notification(); n.setShop(shop); n.setChannel(channel); n.setType(type); n.setRecipient(recipient.trim()); n.setSubject(subject==null?"":subject.trim()); n.setMessage(message); n.setProvider("MOCK"); n.setStatus(NotificationStatus.QUEUED); n.setAttempts(0); n=repo.save(n);

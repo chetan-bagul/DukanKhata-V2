@@ -1,76 +1,118 @@
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
 spring:
   application:
     name: dukankhata-backend
+
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/dukankhata}
+    username: ${DB_USERNAME:dukankhata}
+    password: ${DB_PASSWORD:change-this-local-only}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: DukanKhataHikariPool
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      minimum-idle: ${DB_MIN_IDLE:1}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
   jpa:
-    hibernate:
-      # Transitional mode for the existing schema. Flyway now owns versioned
-      # migrations; ddl-auto will be disabled after the legacy baseline is
-      # confirmed in a real PostgreSQL environment.
-      ddl-auto: ${JPA_DDL_AUTO}
     open-in-view: false
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
     properties:
       hibernate:
-        default_batch_fetch_size: ${HIBERNATE_DEFAULT_BATCH_FETCH_SIZE:32}
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+
   flyway:
-    enabled: ${FLYWAY_ENABLED}
-    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE}
-    baseline-version: ${FLYWAY_BASELINE_VERSION}
+    enabled: ${FLYWAY_ENABLED:true}
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+    baseline-version: ${FLYWAY_BASELINE_VERSION:1}
     locations: classpath:db/migration
+    validate-on-migrate: true
+
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
-      password: ${REDIS_PASSWORD}
-      connect-timeout: ${REDIS_CONNECT_TIMEOUT}
-      timeout: ${REDIS_TIMEOUT}
+      url: ${REDIS_URL:redis://localhost:6379}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:200ms}
+      timeout: ${REDIS_TIMEOUT:200ms}
 
-server:
-  port: ${PORT}
-  error:
-    include-message: never
-    include-stacktrace: never
+  jackson:
+    time-zone: Asia/Kolkata
+    default-property-inclusion: non_null
+
+  mvc:
+    problemdetails:
+      enabled: true
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:local-only-change-this-secret-to-a-random-32-byte-value}
+    expiration-ms: 86400000
+
+  rate-limit:
+    login:
+      capacity: 5
+      refill-interval-ms: 12000
+      state-ttl-ms: 120000
+
+razorpay:
+  key-id: ${RAZORPAY_KEY_ID:}
+  key-secret: ${RAZORPAY_KEY_SECRET:}
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+
+subscription:
+  trial-days: ${SUBSCRIPTION_TRIAL_DAYS:30}
+  plans:
+    small-monthly: ${SUBSCRIPTION_SMALL_MONTHLY:150}
+    small-yearly: ${SUBSCRIPTION_SMALL_YEARLY:1500}
+    large-monthly: ${SUBSCRIPTION_LARGE_MONTHLY:199}
+    large-yearly: ${SUBSCRIPTION_LARGE_YEARLY:1990}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:5175}
+
+  notification-worker:
+    fixed-delay-ms: ${NOTIFICATION_WORKER_FIXED_DELAY_MS:5000}
+    lease-duration-ms: ${NOTIFICATION_WORKER_LEASE_DURATION_MS:300000}
+    max-attempts: ${NOTIFICATION_WORKER_MAX_ATTEMPTS:5}
+
+  slow-request-ms: ${SLOW_REQUEST_MS:1000}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics
+
   endpoint:
     health:
       show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,redis,mappedSchema
 
-security:
-  jwt:
-    secret: ${JWT_SECRET}
-    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
-  rate-limit:
-    login:
-      capacity: ${LOGIN_RATE_LIMIT_CAPACITY}
-      refill-interval-ms: ${LOGIN_RATE_LIMIT_REFILL_INTERVAL_MS}
-      state-ttl-ms: ${LOGIN_RATE_LIMIT_STATE_TTL_MS}
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
 
-app:
-  business-time-zone: ${BUSINESS_TIME_ZONE:Asia/Kolkata}
-  observability:
-    slow-request-ms: ${SLOW_REQUEST_MS}
-
-razorpay:
-  key-id: ${RAZORPAY_KEY_ID}
-  key-secret: ${RAZORPAY_KEY_SECRET}
-  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
-
-subscription:
-  trial-days: ${SUBSCRIPTION_TRIAL_DAYS}
-  plans:
-    small-monthly: ${SUBSCRIPTION_SMALL_MONTHLY}
-    small-yearly: ${SUBSCRIPTION_SMALL_YEARLY}
-    large-monthly: ${SUBSCRIPTION_LARGE_MONTHLY}
-    large-yearly: ${SUBSCRIPTION_LARGE_YEARLY}
-
-notifications:
-  worker:
-    fixed-delay-ms: ${NOTIFICATION_WORKER_FIXED_DELAY_MS}
+logging:
+  level:
+    root: INFO
+    com.dukankhata: INFO
+    org.springframework.security: INFO
+    org.flywaydb: INFO

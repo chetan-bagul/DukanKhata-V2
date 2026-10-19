@@ -1,3 +1,3 @@
 package com.dukankhata.subscription;
-import org.springframework.data.jpa.repository.JpaRepository; import java.util.*;
-public interface WebhookEventRepository extends JpaRepository<WebhookEvent,UUID>{boolean existsByProviderEventId(String id);}
+import org.springframework.data.jpa.repository.JpaRepository; import org.springframework.data.jpa.repository.Modifying; import org.springframework.data.jpa.repository.Query; import org.springframework.data.repository.query.Param; import java.time.Instant; import java.util.*;
+public interface WebhookEventRepository extends JpaRepository<WebhookEvent,UUID>{boolean existsByProviderEventId(String id); @Modifying @Query(value="insert into webhook_events (id, provider_event_id, event_type, received_at) values (:id, :eventId, :eventType, :receivedAt) on conflict (provider_event_id) do nothing",nativeQuery=true) int claimEvent(@Param("id") UUID id,@Param("eventId") String eventId,@Param("eventType") String eventType,@Param("receivedAt") Instant receivedAt);}

@@ -55,9 +55,9 @@ public class ReportPdfService {
         return text(cs,report.summary().from().format(DF)+" to "+report.summary().to().format(DF),MARGIN,y-2,8,false)-10;
     }
     private float summary(PDPageContentStream cs,ReportSummaryResponse s,float y)throws IOException{
-        String[] lines={"Closed days: "+s.closedDays(),"Expected: "+money(s.expectedSales()),"Cash: "+money(s.cash()),"UPI: "+money(s.upi()),"Udhar: "+money(s.udhar()),"Actual: "+money(s.actualCollection()),"Variance: "+money(s.variance()),"Expenses: "+money(s.expenses()),"Net Profit: "+money(s.netProfit())};
+        String[] lines={"Closed days: "+s.closedDays(),"Expected: "+money(s.expectedSales()),"Cash: "+money(s.cash()),"UPI: "+money(s.upi()),"Udhar: "+money(s.udhar()),"Repay cash: "+money(s.customerRepaymentCash()),"Repay UPI: "+money(s.customerRepaymentUpi()),"Actual: "+money(s.actualCollection()),"Variance: "+money(s.variance()),"POS sales: "+money(s.posSalesTotal()),"POS cash: "+money(s.posCash()),"POS UPI: "+money(s.posUpi()),"POS Udhar: "+money(s.posUdhar()),"Expenses: "+money(s.expenses()),"Net Profit: "+money(s.netProfit())};
         float x=MARGIN; float rowY=y;
-        for(int i=0;i<lines.length;i++){text(cs,lines[i],x,rowY,8,i==8); x+=90; if(i==4){x=MARGIN;rowY-=14;}}
+        for(int i=0;i<lines.length;i++){text(cs,lines[i],x,rowY,7,i==14); x+=108; if((i+1)%5==0){x=MARGIN;rowY-=14;}}
         return rowY-18;
     }
     private float text(PDPageContentStream cs,String v,float x,float y,float size,boolean bold)throws IOException{

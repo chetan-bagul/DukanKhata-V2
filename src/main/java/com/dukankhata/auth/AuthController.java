@@ -15,10 +15,13 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final AuthService authService;
     private final LoginRateLimitService loginRateLimitService;
+    private final JwtRevocationService jwtRevocationService;
 
-    public AuthController(AuthService authService, LoginRateLimitService loginRateLimitService) {
+    public AuthController(AuthService authService, LoginRateLimitService loginRateLimitService,
+                          JwtRevocationService jwtRevocationService) {
         this.authService = authService;
         this.loginRateLimitService = loginRateLimitService;
+        this.jwtRevocationService = jwtRevocationService;
     }
 
     @PostMapping("/signup")
@@ -38,7 +41,8 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ApiResponse<Void> logout() {
+    public ApiResponse<Void> logout(@RequestHeader("Authorization") String authorization) {
+        jwtRevocationService.revoke(authorization.substring(7));
         return ApiResponse.success("Logged out successfully");
     }
 }

@@ -6,6 +6,7 @@ import com.dukankhata.common.security.CurrentUserService;
 import com.dukankhata.customer.dto.*;
 import com.dukankhata.shop.Shop;
 import com.dukankhata.shop.ShopRepository;
+import com.dukankhata.pos.PaymentMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal; import java.util.*;
@@ -35,20 +36,28 @@ public class CustomerService {
 
     @Transactional(readOnly=true) public CustomerResponse get(UUID id){return CustomerResponse.from(customers.findByIdAndShopIdAndActiveTrue(id,current.shopId()).orElseThrow(()->new ResourceNotFoundException("Customer not found")));}
 
-    @Transactional public LedgerEntryResponse charge(UUID id,LedgerEntryRequest request){return addEntry(id,LedgerEntryType.CHARGE,request.amount(),request.description(),null,null);}
-    @Transactional public LedgerEntryResponse payment(UUID id,LedgerEntryRequest request){return addEntry(id,LedgerEntryType.PAYMENT,request.amount(),request.description(),null,null);}
+    @Transactional public LedgerEntryResponse charge(UUID id,LedgerEntryRequest request){return addEntry(id,LedgerEntryType.CHARGE,request.amount(),request.description(),null,null,null);}
+    @Transactional public LedgerEntryResponse payment(UUID id,LedgerEntryRequest request){
+        if(request.paymentMethod()!=PaymentMethod.CASH && request.paymentMethod()!=PaymentMethod.UPI) {
+            throw new IllegalArgumentException("Customer repayment method must be CASH or UPI");
+        }
+        return addEntry(id,LedgerEntryType.PAYMENT,request.amount(),request.description(),null,null,request.paymentMethod());
+    }
+    @Transactional public LedgerEntryResponse creditRefund(UUID id,BigDecimal amount,String description){
+        return addEntry(id,LedgerEntryType.PAYMENT,amount,description,null,null,null);
+    }
 
     @Transactional(readOnly=true) public List<LedgerEntryResponse> ledger(UUID id){
         UUID shopId=current.shopId(); customers.findByIdAndShopIdAndActiveTrue(id,shopId).orElseThrow(()->new ResourceNotFoundException("Customer not found"));
         return this.ledger.findAllByCustomerIdAndShopIdOrderByCreatedAtDesc(id,shopId).stream().map(LedgerEntryResponse::from).toList();
     }
 
-    private LedgerEntryResponse addEntry(UUID id,LedgerEntryType type,BigDecimal amount,String description,String refType,UUID refId){
+    private LedgerEntryResponse addEntry(UUID id,LedgerEntryType type,BigDecimal amount,String description,String refType,UUID refId,PaymentMethod paymentMethod){
         UUID shopId=current.shopId(); Customer c=customers.findByIdAndShopIdForUpdate(id,shopId).orElseThrow(()->new ResourceNotFoundException("Customer not found"));
         BigDecimal delta=type==LedgerEntryType.CHARGE?amount:amount; BigDecimal newBalance;
         if(type==LedgerEntryType.CHARGE) newBalance=c.getBalance().subtract(delta); else if(type==LedgerEntryType.PAYMENT) newBalance=c.getBalance().add(delta); else newBalance=c.getBalance().add(delta);
         c.setBalance(newBalance); customers.save(c);
-        CustomerLedgerEntry e=new CustomerLedgerEntry(); e.setShopId(shopId); e.setCustomer(c); e.setType(type); e.setAmount(amount); e.setBalanceAfter(newBalance); e.setDescription(blankToNull(description)); e.setReferenceType(refType); e.setReferenceId(refId);
+        CustomerLedgerEntry e=new CustomerLedgerEntry(); e.setShopId(shopId); e.setCustomer(c); e.setType(type); e.setPaymentMethod(paymentMethod); e.setAmount(amount); e.setBalanceAfter(newBalance); e.setDescription(blankToNull(description)); e.setReferenceType(refType); e.setReferenceId(refId);
         LedgerEntryResponse response=LedgerEntryResponse.from(ledger.save(e));
         if(type==LedgerEntryType.PAYMENT) automatedNotifications.customerPayment(c.getShop(), c, amount);
         else if(type==LedgerEntryType.CHARGE) automatedNotifications.udharReminder(c.getShop(), c);

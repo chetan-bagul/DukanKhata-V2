@@ -13,7 +13,7 @@ import com.dukankhata.common.exception.*; import com.dukankhata.common.security.
   if(udhar && sale.getCustomer()==null) throw new BusinessException("This sale has no customer, so Udhar refund is not available");
   SaleReturn ret=new SaleReturn(); ret.setShop(sale.getShop()); ret.setSale(sale); ret.setRefundTotal(total); ret.setReason(req.reason().trim()); ret=returns.save(ret);
   for(var item:sale.getItems()) if(item.getProduct()!=null) inventory.restoreForReturn(item.getProduct(),item.getQuantity(),sale.getInvoiceNumber());
-  if(udhar) for(var x:req.refunds()) if(x.method()==ReturnRefundMethod.UDHAR) customers.payment(sale.getCustomer().getId(),new LedgerEntryRequest(x.amount(),"Refund for POS invoice "+sale.getInvoiceNumber()));
+  if(udhar) for(var x:req.refunds()) if(x.method()==ReturnRefundMethod.UDHAR) customers.creditRefund(sale.getCustomer().getId(),x.amount(),"Refund for POS invoice "+sale.getInvoiceNumber());
   if(sale.getSeller()!=null && sale.getSellerCommissionAmount().signum()>0) staff.adjustment(sale.getSeller().getId(),new com.dukankhata.staff.dto.StaffAdjustmentRequest(sale.getSellerCommissionAmount().negate(),"Commission reversed for returned invoice "+sale.getInvoiceNumber()));
   for(var x:req.refunds()){ReturnRefund rr=new ReturnRefund();rr.setSaleReturn(ret);rr.setMethod(x.method());rr.setAmount(x.amount().setScale(2,RoundingMode.HALF_UP));refunds.save(rr);}
   sale.setStatus(SaleStatus.RETURNED); sales.save(sale); return ReturnResponse.from(ret,refunds.findBySaleReturnId(ret.getId()));

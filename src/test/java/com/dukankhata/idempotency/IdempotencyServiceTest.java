@@ -115,7 +115,11 @@ class IdempotencyServiceTest {
         r.setUserId(userId);
         r.setOperation(operation);
         r.setIdempotencyKey(key);
-        r.setResponseJson(response);
+        try {
+            r.setResponseJson(new ObjectMapper().writeValueAsString(response));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
         try {
             String json = new ObjectMapper().writeValueAsString(new PaymentRequest(amount));
             String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")

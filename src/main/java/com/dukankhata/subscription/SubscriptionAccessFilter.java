@@ -24,10 +24,10 @@ public class SubscriptionAccessFilter extends OncePerRequestFilter {
   if(path.startsWith("/api/v1/auth/")||path.startsWith("/api/v1/subscription/")||path.equals("/api/v1/health")||path.equals("/actuator/health")){chain.doFilter(req,res);return;}
   Authentication a=SecurityContextHolder.getContext().getAuthentication();
   if(a==null||!(a.getPrincipal() instanceof User)){chain.doFilter(req,res);return;}
-  User user=(User)a.getPrincipal(); Subscription s=subscriptions.findTopByShopIdOrderByCreatedAtDesc(user.getShop().getId()).orElse(null);
-  boolean allowed;
-  if(s==null){allowed=Instant.now().isBefore(user.getShop().getCreatedAt().plus(trialDays,ChronoUnit.DAYS));}
-  else {allowed=s.getStatus()==SubscriptionStatus.ACTIVE && s.getEndsAt()!=null && Instant.now().isBefore(s.getEndsAt());}
+  User user=(User)a.getPrincipal(); Instant now=Instant.now();
+  var active=subscriptions.findTopByShopIdAndStatusAndEndsAtAfterOrderByCreatedAtDescIdDesc(user.getShop().getId(),SubscriptionStatus.ACTIVE,now);
+  boolean allowed=active.isPresent()&&active.get().getPlan().supportsOperatingMode(user.getShop().getOperatingMode());
+  if(!allowed){boolean paidBefore=subscriptions.existsByShopIdAndRazorpayPaymentIdIsNotNull(user.getShop().getId());allowed=!paidBefore&&now.isBefore(user.getShop().getCreatedAt().plus(trialDays,ChronoUnit.DAYS));}
   if(!allowed){res.setStatus(402);res.setContentType("application/json");res.getWriter().write("{\"success\":false,\"status\":402,\"code\":\"SUBSCRIPTION_REQUIRED\",\"message\":\"Your trial or subscription has expired. Please choose a plan to continue.\"}");return;}
   chain.doFilter(req,res);
  }

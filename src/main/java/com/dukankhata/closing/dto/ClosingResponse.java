@@ -1,1 +1,51 @@
-package com.dukankhata.closing.dto; import com.dukankhata.closing.DailyClosing; import java.math.BigDecimal; import java.time.*; import java.util.*; public record ClosingResponse(UUID id,LocalDate businessDate,String status,BigDecimal expectedSales,BigDecimal cash,BigDecimal upi,BigDecimal udhar,BigDecimal actualCollection,BigDecimal variance,BigDecimal expensesTotal,BigDecimal netProfit,Boolean posAutoAggregated,Long posSaleCount,BigDecimal posSalesTotal,String notes,Instant closedAt,List<ClosingItemResponse> items,List<ClosingExpenseResponse> expenses){public static ClosingResponse from(DailyClosing c){return new ClosingResponse(c.getId(),c.getBusinessDate(),c.getStatus().name(),c.getExpectedSales(),c.getCash(),c.getUpi(),c.getUdhar(),c.getActualCollection(),c.getVariance(),c.getExpensesTotal(),c.getNetProfit(),c.getPosAutoAggregated(),c.getPosSaleCount(),c.getPosSalesTotal(),c.getNotes(),c.getClosedAt(),c.getItems().stream().map(i->new ClosingItemResponse(i.getProduct().getId(),i.getProductNameSnapshot(),i.getUnitPriceSnapshot(),i.getQuantity(),i.getAmount())).toList(),c.getExpenses().stream().map(e->new ClosingExpenseResponse(e.getId(),e.getDescription(),e.getAmount())).toList());}}
+package com.dukankhata.closing.dto;
+
+import com.dukankhata.closing.DailyClosing;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+public record ClosingResponse(
+        UUID id,
+        LocalDate businessDate,
+        String status,
+        BigDecimal expectedSales,
+        BigDecimal cash,
+        BigDecimal upi,
+        BigDecimal udhar,
+        BigDecimal customerRepaymentCash,
+        BigDecimal customerRepaymentUpi,
+        BigDecimal actualCollection,
+        BigDecimal variance,
+        BigDecimal expensesTotal,
+        BigDecimal netProfit,
+        Boolean posAutoAggregated,
+        Long posSaleCount,
+        BigDecimal posSalesTotal,
+        BigDecimal posCash,
+        BigDecimal posUpi,
+        BigDecimal posUdhar,
+        String notes,
+        Instant closedAt,
+        List<ClosingItemResponse> items,
+        List<ClosingExpenseResponse> expenses) {
+
+    public static ClosingResponse from(DailyClosing closing) {
+        return new ClosingResponse(
+                closing.getId(), closing.getBusinessDate(), closing.getStatus().name(),
+                closing.getExpectedSales(), closing.getCash(), closing.getUpi(), closing.getUdhar(),
+                closing.getCustomerRepaymentCash(), closing.getCustomerRepaymentUpi(),
+                closing.getActualCollection(), closing.getVariance(), closing.getExpensesTotal(),
+                closing.getNetProfit(), closing.getPosAutoAggregated(), closing.getPosSaleCount(),
+                closing.getPosSalesTotal(), closing.getPosCash(), closing.getPosUpi(), closing.getPosUdhar(),
+                closing.getNotes(), closing.getClosedAt(),
+                closing.getItems().stream().map(item -> new ClosingItemResponse(
+                        item.getProduct().getId(), item.getProductNameSnapshot(), item.getUnitPriceSnapshot(),
+                        item.getQuantity(), item.getAmount())).toList(),
+                closing.getExpenses().stream().map(expense -> new ClosingExpenseResponse(
+                        expense.getId(), expense.getDescription(), expense.getAmount())).toList());
+    }
+}

@@ -25,6 +25,11 @@ public class ApiSecurityExceptionHandlers implements AuthenticationEntryPoint, A
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
+        if (Boolean.TRUE.equals(request.getAttribute("sessionRevocationUnavailable"))) {
+            write(response, request, HttpStatus.SERVICE_UNAVAILABLE, "SESSION_REVOCATION_UNAVAILABLE",
+                    "Authentication is temporarily unavailable. Please try again shortly.");
+            return;
+        }
         write(response, request, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED",
                 "Authentication is required to access this resource.");
     }

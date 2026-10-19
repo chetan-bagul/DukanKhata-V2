@@ -16,10 +16,13 @@ import java.util.List;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
+    private final JwtRevocationService jwtRevocationService;
     private final UserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository) {
+    public JwtAuthenticationFilter(JwtService jwtService, JwtRevocationService jwtRevocationService,
+                                  UserRepository userRepository) {
         this.jwtService = jwtService;
+        this.jwtRevocationService = jwtRevocationService;
         this.userRepository = userRepository;
     }
 
@@ -37,9 +40,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            User user = userRepository.findById(
-                    jwtService.getUserId(header.substring(7))
-            ).orElse(null);
+            String token = header.substring(7);
+            var claims = jwtService.parse(token);
+            if (jwtRevocationService.isRevoked(token)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+            User user = userRepository.findById(java.util.UUID.fromString(claims.getSubject())).orElse(null);
 
             if (user != null && user.isActive()) {
                 var authentication = new UsernamePasswordAuthenticationToken(
@@ -49,6 +56,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 );
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
+        } catch (SessionRevocationUnavailableException ex) {
+            request.setAttribute("sessionRevocationUnavailable", true);
         } catch (Exception ignored) {
             // Invalid or expired JWT remains unauthenticated.
         }

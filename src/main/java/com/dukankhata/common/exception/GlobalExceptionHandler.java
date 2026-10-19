@@ -2,6 +2,8 @@ package com.dukankhata.common.exception;
 
 import com.dukankhata.common.api.ApiError;
 import com.dukankhata.common.ratelimit.RateLimitExceededException;
+import com.dukankhata.common.ratelimit.RateLimitUnavailableException;
+import com.dukankhata.auth.SessionRevocationUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
@@ -56,6 +58,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
                 .body(new ApiError(false, 429, "RATE_LIMITED", ex.getMessage(), null, Instant.now(), request.getRequestURI(), correlationId()));
+    }
+
+    @ExceptionHandler(RateLimitUnavailableException.class)
+    public ResponseEntity<ApiError> handleRateLimitUnavailable(RateLimitUnavailableException ex, HttpServletRequest request) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, "RATE_LIMIT_UNAVAILABLE", ex.getMessage(), null, request);
+    }
+
+    @ExceptionHandler(SessionRevocationUnavailableException.class)
+    public ResponseEntity<ApiError> handleSessionRevocationUnavailable(SessionRevocationUnavailableException ex, HttpServletRequest request) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, "SESSION_REVOCATION_UNAVAILABLE", ex.getMessage(), null, request);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -2,13 +2,20 @@ package com.dukankhata.common.ratelimit;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class TokenBucketRateLimiter {
+    private static final Logger log = LoggerFactory.getLogger(TokenBucketRateLimiter.class);
     private static final String SCRIPT = """
         local now = tonumber(ARGV[3])
         local capacity = tonumber(ARGV[1])
@@ -65,9 +72,21 @@ public class TokenBucketRateLimiter {
 
     private final StringRedisTemplate redis;
     private final DefaultRedisScript<List> script = new DefaultRedisScript<>(SCRIPT, List.class);
+    private final Counter failureCounter;
+    private final Counter recoveryCounter;
+    private final AtomicBoolean degraded = new AtomicBoolean();
 
-    public TokenBucketRateLimiter(StringRedisTemplate redis) {
+    public TokenBucketRateLimiter(StringRedisTemplate redis, MeterRegistry meterRegistry) {
         this.redis = redis;
+        this.failureCounter = Counter.builder("login.rate_limit.redis.failures")
+                .description("Redis errors while checking login rate limits")
+                .register(meterRegistry);
+        this.recoveryCounter = Counter.builder("login.rate_limit.redis.recoveries")
+                .description("Redis recoveries after login rate limiting was unavailable")
+                .register(meterRegistry);
+        Gauge.builder("login.rate_limit.redis.degraded", degraded, state -> state.get() ? 1 : 0)
+                .description("Whether Redis-backed login rate limiting is unavailable")
+                .register(meterRegistry);
     }
 
     public Result tryConsume(String mobileKey, String ipKey, int capacity, Duration refillInterval, Duration stateTtl) {
@@ -88,9 +107,18 @@ public class TokenBucketRateLimiter {
 
         boolean allowed = Long.parseLong(String.valueOf(result.get(0))) == 1L;
         long retry = Long.parseLong(String.valueOf(result.get(3)));
+        if (degraded.getAndSet(false)) {
+            recoveryCounter.increment();
+            log.info("Login rate limiter Redis connection recovered");
+        }
         return new Result(allowed, retry);
         } catch (Exception ex) {
-            return new Result(true, 0);
+            failureCounter.increment();
+            if (!degraded.getAndSet(true)) {
+                log.error("Login rate limiter Redis operation failed; denying login attempts (causeType={})",
+                        ex.getClass().getSimpleName());
+            }
+            throw new RateLimitUnavailableException();
         }
     }
 

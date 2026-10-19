@@ -20,10 +20,10 @@ public class SaleService {
  private final SaleRepository sales; private final ProductRepository products; private final CustomerRepository customers; private final CurrentUserService current; private final ShopRepository shops; private final CustomerService customerService; private final com.dukankhata.inventory.InventoryService inventory; private final StaffRepository staff; private final StaffService staffService; private final com.dukankhata.notification.automation.AutomatedNotificationService automatedNotifications;
  public SaleService(SaleRepository sales,ProductRepository products,CustomerRepository customers,CurrentUserService current,ShopRepository shops,CustomerService customerService,com.dukankhata.inventory.InventoryService inventory,StaffRepository staff,StaffService staffService,com.dukankhata.notification.automation.AutomatedNotificationService automatedNotifications){this.sales=sales;this.products=products;this.customers=customers;this.current=current;this.shops=shops;this.customerService=customerService;this.inventory=inventory;this.staff=staff;this.staffService=staffService;this.automatedNotifications=automatedNotifications;}
  @Transactional public SaleResponse create(CreateSaleRequest r){
-  UUID shopId=current.shopId(); Shop shop=shops.findById(shopId).orElseThrow(()->new ResourceNotFoundException("Shop not found"));
+  UUID shopId=current.shopId(); Shop shop=shops.findByIdForUpdate(shopId).orElseThrow(()->new ResourceNotFoundException("Shop not found"));
   Staff seller=null; if(r.sellerId()!=null) seller=staff.findByIdAndShopIdAndActiveTrue(r.sellerId(),shopId).orElseThrow(()->new ResourceNotFoundException("Staff seller not found"));
   Customer customer=null; if(r.customerId()!=null) customer=customers.findByIdAndShopIdAndActiveTrue(r.customerId(),shopId).orElseThrow(()->new ResourceNotFoundException("Customer not found"));
-  Sale sale=new Sale(); sale.setShop(shop); sale.setCustomer(customer); sale.setSeller(seller); sale.setInvoiceNumber(nextInvoice(shopId));
+  Sale sale=new Sale(); sale.setShop(shop); sale.setCustomer(customer); sale.setSeller(seller); sale.setInvoiceNumber(nextInvoice(shopId,LocalDate.now(ZoneId.of("Asia/Kolkata"))));
   BigDecimal subtotal=BigDecimal.ZERO, taxable=BigDecimal.ZERO, cgst=BigDecimal.ZERO, sgst=BigDecimal.ZERO, igst=BigDecimal.ZERO;
   boolean interstate = customer != null && customer.getStateCode()!=null && shop.getStateCode()!=null && !shop.getStateCode().equals(customer.getStateCode());
   for(var req:r.items()){
@@ -51,13 +51,9 @@ public class SaleService {
  }
  @Transactional(readOnly=true) public SaleResponse get(UUID id){return SaleResponse.from(sales.findByIdAndShopId(id,current.shopId()).orElseThrow(()->new ResourceNotFoundException("Sale not found")));}
  @Transactional(readOnly=true) public org.springframework.data.domain.Slice<SaleResponse> list(int page,int size){var pageable=org.springframework.data.domain.PageRequest.of(page,size);return sales.findAllByShopIdOrderByCreatedAtDescIdDesc(current.shopId(),pageable).map(SaleResponse::from);}
- private String nextInvoice(UUID shopId){
-  ZoneId zone = ZoneId.of("Asia/Kolkata");
-  LocalDate today = LocalDate.now(zone);
-  String day = today.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-  Instant start = today.atStartOfDay(zone).toInstant();
-  Instant end = today.plusDays(1).atStartOfDay(zone).toInstant().minusNanos(1);
-  long count = sales.countByShopIdAndCreatedAtBetween(shopId, start, end);
-  return "INV-" + day + "-" + String.format("%04d", count + 1);
+ private String nextInvoice(UUID shopId, LocalDate today){
+  String prefix = "INV-" + today.format(DateTimeFormatter.BASIC_ISO_DATE) + "-";
+  Integer maxSuffix = sales.findMaxInvoiceSuffix(shopId,prefix,prefix.length()+1);
+  return prefix + String.format("%04d", Math.addExact(maxSuffix == null ? 0 : maxSuffix, 1));
  }
 }
