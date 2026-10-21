@@ -99,6 +99,9 @@ class ProductionSchemaConfigurationTest {
         var base = new YamlPropertySourceLoader()
                 .load("application", new ClassPathResource("application.yml")).getFirst();
 
-        assertThat(base.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("${JPA_DDL_AUTO:validate}");
+        var resolver = new PropertySourcesPropertyResolver(new MutablePropertySources());
+        assertThat(resolver.resolveRequiredPlaceholders(
+                base.getProperty("spring.jpa.hibernate.ddl-auto").toString()))
+                .isEqualTo("validate");
     }
 }
