@@ -3,6 +3,7 @@ package com.dukankhata.closing;
 import com.dukankhata.auth.User;
 import com.dukankhata.auth.UserRepository;
 import com.dukankhata.common.security.CurrentUserService;
+import com.dukankhata.common.time.BusinessTime;
 import com.dukankhata.customer.Customer;
 import com.dukankhata.customer.CustomerLedgerEntry;
 import com.dukankhata.customer.LedgerEntryType;
@@ -43,7 +44,7 @@ import static org.mockito.Mockito.when;
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.flyway.enabled=false"
 })
-@Import({DailyClosingService.class, CustomerService.class, FinancialService.class, ReportService.class, ReportPdfService.class})
+@Import({DailyClosingService.class, CustomerService.class, FinancialService.class, ReportService.class, ReportPdfService.class, BusinessTime.class})
 class DailyClosingAccountingTest {
     @Autowired DailyClosingService closingService;
     @Autowired CustomerService customerService;

@@ -10,4 +10,4 @@ WORKDIR /app
 ENV SPRING_PROFILES_ACTIVE=prod
 COPY --from=build /build/target/dukankhata-backend-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","app.jar"]
+ENTRYPOINT ["java","-Duser.timezone=Asia/Kolkata","-jar","app.jar"]

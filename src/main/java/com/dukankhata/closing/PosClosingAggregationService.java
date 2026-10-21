@@ -1,9 +1,9 @@
 package com.dukankhata.closing;
 
 import com.dukankhata.common.security.CurrentUserService;
+import com.dukankhata.common.time.BusinessTime;
 import com.dukankhata.pos.PaymentMethod;
 import com.dukankhata.pos.SaleRepository;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -14,25 +14,24 @@ import java.util.UUID;
 public class PosClosingAggregationService {
     private final SaleRepository saleRepository;
     private final CurrentUserService currentUserService;
-    private final ZoneId businessZone;
+    private final BusinessTime businessTime;
 
     public PosClosingAggregationService(SaleRepository saleRepository,
                                         CurrentUserService currentUserService,
-                                        @Value("${app.business-time-zone:Asia/Kolkata}") String timeZone) {
+                                        BusinessTime businessTime) {
         this.saleRepository = saleRepository;
         this.currentUserService = currentUserService;
-        this.businessZone = ZoneId.of(timeZone);
+        this.businessTime = businessTime;
     }
 
     public PosTotals aggregate(LocalDate businessDate) {
         UUID shopId = currentUserService.shopId();
-        Instant from = businessDate.atStartOfDay(businessZone).toInstant();
-        Instant to = businessDate.plusDays(1).atStartOfDay(businessZone).toInstant();
-        BigDecimal total = money(saleRepository.sumTotal(shopId, from, to));
-        BigDecimal cash = money(saleRepository.sumPayment(shopId, PaymentMethod.CASH, from, to));
-        BigDecimal upi = money(saleRepository.sumPayment(shopId, PaymentMethod.UPI, from, to));
-        BigDecimal udhar = money(saleRepository.sumPayment(shopId, PaymentMethod.UDHAR, from, to));
-        long count = saleRepository.countCompletedByShopIdAndCreatedAtBetween(shopId, from, to);
+        var range = businessTime.range(businessDate, businessDate);
+        BigDecimal total = money(saleRepository.sumTotal(shopId, range.fromInclusive(), range.toExclusive()));
+        BigDecimal cash = money(saleRepository.sumPayment(shopId, PaymentMethod.CASH, range.fromInclusive(), range.toExclusive()));
+        BigDecimal upi = money(saleRepository.sumPayment(shopId, PaymentMethod.UPI, range.fromInclusive(), range.toExclusive()));
+        BigDecimal udhar = money(saleRepository.sumPayment(shopId, PaymentMethod.UDHAR, range.fromInclusive(), range.toExclusive()));
+        long count = saleRepository.countCompletedByShopIdAndCreatedAtBetween(shopId, range.fromInclusive(), range.toExclusive());
         return new PosTotals(total, cash, upi, udhar, count);
     }
 

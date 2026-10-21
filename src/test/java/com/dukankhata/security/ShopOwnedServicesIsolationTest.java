@@ -4,6 +4,7 @@ import com.dukankhata.auth.User;
 import com.dukankhata.auth.UserRepository;
 import com.dukankhata.common.exception.ResourceNotFoundException;
 import com.dukankhata.common.security.CurrentUserService;
+import com.dukankhata.common.time.BusinessTime;
 import com.dukankhata.finance.ExpenseCategory;
 import com.dukankhata.finance.FinancialExpense;
 import com.dukankhata.finance.FinancialExpenseRepository;
@@ -37,7 +38,7 @@ import static org.mockito.Mockito.when;
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.flyway.enabled=false"
 })
-@Import({SupplierService.class, FinancialService.class})
+@Import({SupplierService.class, FinancialService.class, BusinessTime.class})
 class ShopOwnedServicesIsolationTest {
     @Autowired SupplierService suppliersService;
     @Autowired FinancialService financialService;

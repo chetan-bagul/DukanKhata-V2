@@ -41,3 +41,17 @@ This report accompanies a source-only project candidate. It is not a deployment 
 - Complete provider credential rotation and review the release/rollback procedure.
 
 Do not enable production Flyway or Hibernate schema mutation until the schema/migration plan is reviewed and verified. Do not deploy based solely on the existing 77-test report.
+
+## Current inspection and implementation checklist (2026-10-20)
+
+This checklist is a planning update, not a production approval. The verification results below supersede only the historical Maven-availability and test-count statements above; no application behavior was changed for this inspection.
+
+- [ ] Obtain owner-confirmed Supabase schema-only and `flyway_schema_history` exports; compare every migration checksum and the existing audit indexes.
+- [ ] Reconcile V1–V4 fresh-install and existing-install paths against that evidence; update deployment guidance to match tested V4 behavior without editing applied migrations.
+- [ ] Run disposable PostgreSQL/Supabase-compatible migration, Hibernate `validate`, persistence, restart, and data-preservation checks; keep production Flyway disabled until owner approval.
+- [ ] Verify production Supabase connectivity/TLS/pooling, Redis TLS, required environment configuration, and health/readiness behavior using the existing hosting setup.
+- [ ] Complete security/regression coverage for JWT/logout, role and shop isolation, rate limits/Redis failure, subscription enforcement, and Razorpay payment/webhook handling; confirm whether OTP is in scope before adding it.
+- [ ] Complete dependency scanning/SBOM and credential-exposure review; obtain operator approval for any live credential rotation.
+- [ ] Run final Java 21 `mvn -B -ntp verify`, `git diff --check`, backup/restore rehearsal, and release/rollback review before deployment approval.
+
+Current baseline: Java 21.0.12, Spring Boot 3.5.5, `mvn -B -ntp verify` completed successfully with 83 tests (0 failures, 0 errors, 0 skipped). `git diff --check` passed with Git line-ending warnings only. Supabase/live database behavior and owner-authenticated migration evidence remain unverified.

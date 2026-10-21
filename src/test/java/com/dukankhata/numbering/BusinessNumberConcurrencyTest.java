@@ -1,6 +1,7 @@
 package com.dukankhata.numbering;
 
 import com.dukankhata.common.security.CurrentUserService;
+import com.dukankhata.common.time.BusinessTime;
 import com.dukankhata.common.exception.BusinessException;
 import com.dukankhata.customer.CustomerService;
 import com.dukankhata.auth.User;
@@ -60,7 +61,7 @@ import static org.mockito.Mockito.when;
         "spring.flyway.enabled=false"
 })
 @Import({SaleService.class, PurchaseService.class, InventoryService.class, SupplierService.class,
-        IdempotencyService.class, JacksonAutoConfiguration.class})
+        IdempotencyService.class, JacksonAutoConfiguration.class, BusinessTime.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class BusinessNumberConcurrencyTest {
     @Autowired SaleService sales;

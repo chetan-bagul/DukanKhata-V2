@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -32,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(value = AuthController.class, properties = {
         "server.port=8080",
+        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
         "security.jwt.secret=auth-security-test-secret-with-more-than-32-bytes",
         "subscription.trial-days=30",
         "app.cors.allowed-origins=http://localhost:3000,http://localhost:5175,https://app.dukankhata.in"
@@ -42,6 +44,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuthSecurityTest {
     @Autowired MockMvc mockMvc;
     @Autowired JwtService jwtService;
+    @Autowired FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration;
+    @Autowired FilterRegistrationBean<SubscriptionAccessFilter> subscriptionFilterRegistration;
 
     @MockBean AuthService authService;
     @MockBean LoginRateLimitService loginRateLimitService;
@@ -91,6 +95,13 @@ class AuthSecurityTest {
     }
 
     @Test
+    void malformedBearerTokenCannotReadMe() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer not.a.valid.jwt"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
     void invalidSignatureCannotReadMe() throws Exception {
         String token = new JwtService("different-test-secret-with-more-than-32-bytes", 60_000)
                 .generateToken(user);
@@ -113,10 +124,36 @@ class AuthSecurityTest {
 
     @Test
     void expiredBearerTokenCannotReadMe() throws Exception {
-        String expiredToken = new JwtService("auth-security-test-secret-with-more-than-32-bytes", -1000)
-                .generateToken(user);
+        String expiredToken = io.jsonwebtoken.Jwts.builder()
+                .subject(userId.toString())
+                .issuedAt(new java.util.Date(System.currentTimeMillis() - 10_000))
+                .expiration(new java.util.Date(System.currentTimeMillis() - 1_000))
+                .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(
+                        "auth-security-test-secret-with-more-than-32-bytes".getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                .compact();
 
         mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + expiredToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void jwtLifetimeMustBePositive() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                        new JwtService("auth-security-test-secret-with-more-than-32-bytes", 0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("JWT expiration must be greater than zero");
+    }
+
+    @Test
+    void securityFiltersAreRegisteredOnlyInsideTheSecurityChain() {
+        org.assertj.core.api.Assertions.assertThat(jwtFilterRegistration.isEnabled()).isFalse();
+        org.assertj.core.api.Assertions.assertThat(subscriptionFilterRegistration.isEnabled()).isFalse();
+    }
+
+    @Test
+    void nonPublicApiRoutesRequireAuthentication() throws Exception {
+        mockMvc.perform(get("/api/v1/products"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }

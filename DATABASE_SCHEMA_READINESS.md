@@ -2,9 +2,9 @@
 
 ## Evidence status
 
-This is an inventory inferred from current JPA entity annotations and Java fields. It is not a database schema dump and does not establish that any non-production or production database matches these mappings. Exact PostgreSQL column names/types, defaults, constraints, indexes, extensions, permissions, and migration history must be checked against an identified sanitized non-production export. No production database was accessed.
+The entity table below is an inventory inferred from JPA annotations and Java fields; it is not authoritative schema evidence. A schema-only SQL backup and separate Flyway CSV were found under `C:\Users\cheta\Desktop\app99\dukankhata-migration-evidence`. Their note claims PostgreSQL 18.6 and a migration-test source, but provides no operator identity or signed provenance. The CSV reports successful V1–V3; the schema dump has no migration rows and lacks V2's conditional audit index although `audit_events` exists. Treat their relationship and history checksums as unverified. No production database was accessed.
 
-The repository contains migrations V1–V3. V1 is a baseline marker, V2 conditionally adds an audit index, and V3 conditionally adds reconciliation/payment columns if the target tables exist. These do not form a complete fresh-install schema. No migration checksums/history from a representative existing database are available.
+V1–V4 remain as historical migration files and are no longer run automatically. Fresh databases use the repository-root `supabase-schema.sql`; it was tested on isolated PostgreSQL 17.11. Earlier V1–V4 tests and comparison against the supplied schema backup remain provisional and do not authenticate the dump, history, or Supabase target.
 
 ## Entity-to-table and field inventory (source-inferred)
 
@@ -60,14 +60,14 @@ Named indexes declared in entities: `idx_supplier_shop_name(shop_id,name)`, `idx
 
 ## Production-profile behavior
 
-`application-prod.yml` sets `spring.jpa.hibernate.ddl-auto=none` and `spring.flyway.enabled=false`; the configuration test loads the YAML resources without starting Spring Boot, creating a datasource, or resolving secrets.
+`application-prod.yml` sets Hibernate `ddl-auto=validate`; automatic Flyway execution is disabled in all application profiles. A brand-new dedicated database is initialized once using the repository-root `supabase-schema.sql`; the application then validates mappings at startup. Test-slice tests explicitly use H2 `create-drop`; these overrides are test-only.
 
-- Compatible existing schema: Hibernate does not mutate or validate it. The `SubscriptionDataInitializer` now seeds a plan only when its code is absent. Existing plans (including inactive plans) retain their operator-managed name, amount, currency, duration, and active status across startup. A unique-code race between simultaneously starting instances is tolerated only when the competing plan becomes visible after the failed insert. This behavior was changed in the supplied candidate, but the test suite could not be rerun in this environment because Maven is unavailable.
-- Empty database or missing `subscription_plans`: there is no schema creation. The plan initializer queries `subscription_plans` and fails with a database access error; Spring Boot startup aborts. Isolated H2 tests verify both a generated entity schema for runner behavior and an empty schema with Hibernate DDL disabled for this failure path.
-- Missing other tables/columns: Hibernate does not detect them at startup. The plan initializer can succeed if its table is present; the app can then finish startup. The custom readiness endpoint runs only `SELECT 1` and a Redis ping, and the Actuator database health indicator checks connectivity, not application-table completeness. Therefore readiness can be UP while another application table/column is absent; the affected request or scheduled outbox query later fails.
-- Incompatible subscription-plan schema: startup fails if the initializer's query or save is incompatible. Other incompatible tables/columns may remain undetected until accessed. `ddl-auto=none` is not schema validation.
+- Fresh empty database: `supabase-schema.sql` applied successfully on disposable PostgreSQL 17.11; Hibernate `validate` and representative signup persistence succeeded. Supabase-hosted connectivity was not tested.
+- Existing installations: not supported by this one-time initialization script and not tested in this phase. The V1–V4 files remain in the repository but are not executed automatically; do not use them as a substitute for an owner-approved adoption process.
+- Existing schema with missing/inconsistent history: do not enable baseline-on-migrate, repair, or manually edit history. Capture a complete approved export and design a separate adoption process; it remains unverified.
+- Hibernate `validate` detects mapped table/column incompatibility during startup but does not verify every index, check constraint, extension, permission, or application invariant. Readiness checks still require actual DB/Redis health.
 
-Do not enable Flyway or `ddl-auto=validate` until the verified migration path and schema match are demonstrated. No existing database should be used for testing.
+Do not enable automatic Flyway initialization. Never run `supabase-schema.sql` against an existing installation or use a live database for schema tests.
 
 ## Operator evidence checklist
 
@@ -84,10 +84,10 @@ Do not send passwords, production data, connection URLs containing secrets, or p
 
 ## Migration verification plan (pending evidence)
 
-1. Compare the complete export/history to all 29 entity mappings and V1–V3 without editing applied migration files.
-2. Fresh path: use a new isolated database on the target PostgreSQL major version; apply reviewed migrations in order; repeat validation/migration checks; inspect all objects/constraints/indexes; start the app with schema mutation off; execute representative repository, transaction rollback, uniqueness, and query checks; enable Hibernate validation only as a test assertion after schema parity.
+1. Authenticate the source and provenance of the schema-only export and complete Flyway history; resolve the V2 audit-index discrepancy and validate checksums without editing V1–V3.
+2. Fresh path: use a new isolated database on each supported PostgreSQL major version; apply `supabase-schema.sql`; inspect all objects; start the app with Hibernate `validate`; execute persistence, uniqueness, rollback, and query checks.
 3. Existing path: restore a sanitized copy to a separate isolated database; record row counts and relationship/invariant checks for users, shops, products, inventory, sales, purchases, ledgers, closings, subscriptions, payments, and audit events; test the reviewed adoption/incremental sequence; compare counts, constraints, relationships, and invariants after migration.
 4. Verify concurrent stock-out behavior in PostgreSQL using the actual pessimistic product-row lock: with stock 10 and two independent transactions each requesting 7, exactly one succeeds, one reports insufficient stock, final stock is 3, and there is one successful stock movement.
-5. Keep production migration disabled. Before any later rollout, require an approved backup, schema-drift review, maintenance/locking plan, post-migration validation, and restore-based rollback plan. No production run is authorized by this checklist.
+5. Keep automatic production migration disabled for existing installations. Before rollout, require an approved backup, schema-drift review, maintenance/locking plan, post-migration validation, and restore-based rollback plan. No production run is authorized by this checklist.
 
 The current H2 inventory concurrency test is useful unit/integration coverage only; it is not PostgreSQL locking evidence. Docker is unavailable in this environment, and no isolated PostgreSQL test fixture has been verified. Do not use the running local PostgreSQL service because its database identity and contents are unknown.

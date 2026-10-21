@@ -24,6 +24,9 @@ public class JwtService {
         if (secret.getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalArgumentException("JWT secret must be at least 32 bytes");
         }
+        if (expirationMs <= 0) {
+            throw new IllegalArgumentException("JWT expiration must be greater than zero");
+        }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMs = expirationMs;
     }

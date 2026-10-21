@@ -77,6 +77,22 @@ public class SecurityConfig {
     }
 
     @Bean
+    FilterRegistrationBean<JwtAuthenticationFilter> jwtAuthenticationFilterRegistration() {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration =
+                new FilterRegistrationBean<>(jwtAuthenticationFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    FilterRegistrationBean<SubscriptionAccessFilter> subscriptionAccessFilterRegistration() {
+        FilterRegistrationBean<SubscriptionAccessFilter> registration =
+                new FilterRegistrationBean<>(subscriptionAccessFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
     }

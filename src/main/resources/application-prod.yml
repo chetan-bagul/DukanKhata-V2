@@ -3,15 +3,29 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:3}
+      minimum-idle: ${DB_MIN_IDLE:0}
+      connection-timeout: 10000
+      validation-timeout: 5000
+      idle-timeout: 300000
+      max-lifetime: 1500000
+      data-source-properties:
+        sslmode: verify-full
+        sslrootcert: ${DB_SSL_ROOT_CERT}
+        connectTimeout: 10
+        socketTimeout: 45
+        options: -c statement_timeout=30000
   jpa:
     hibernate:
-      ddl-auto: none
-  flyway:
-    enabled: false
-    baseline-on-migrate: false
+      ddl-auto: validate
   data:
     redis:
       url: ${REDIS_URL}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_TIMEOUT:2s}
+      ssl:
+        enabled: true
 
 security:
   jwt:

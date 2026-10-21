@@ -2,6 +2,7 @@ package com.dukankhata.pos;
 
 import com.dukankhata.common.exception.*;
 import com.dukankhata.common.security.CurrentUserService;
+import com.dukankhata.common.time.BusinessTime;
 import com.dukankhata.customer.*;
 import com.dukankhata.customer.dto.LedgerEntryRequest;
 import com.dukankhata.product.*;
@@ -17,13 +18,13 @@ import java.util.*;
 
 @Service
 public class SaleService {
- private final SaleRepository sales; private final ProductRepository products; private final CustomerRepository customers; private final CurrentUserService current; private final ShopRepository shops; private final CustomerService customerService; private final com.dukankhata.inventory.InventoryService inventory; private final StaffRepository staff; private final StaffService staffService; private final com.dukankhata.notification.automation.AutomatedNotificationService automatedNotifications;
- public SaleService(SaleRepository sales,ProductRepository products,CustomerRepository customers,CurrentUserService current,ShopRepository shops,CustomerService customerService,com.dukankhata.inventory.InventoryService inventory,StaffRepository staff,StaffService staffService,com.dukankhata.notification.automation.AutomatedNotificationService automatedNotifications){this.sales=sales;this.products=products;this.customers=customers;this.current=current;this.shops=shops;this.customerService=customerService;this.inventory=inventory;this.staff=staff;this.staffService=staffService;this.automatedNotifications=automatedNotifications;}
+ private final SaleRepository sales; private final ProductRepository products; private final CustomerRepository customers; private final CurrentUserService current; private final ShopRepository shops; private final CustomerService customerService; private final com.dukankhata.inventory.InventoryService inventory; private final StaffRepository staff; private final StaffService staffService; private final com.dukankhata.notification.automation.AutomatedNotificationService automatedNotifications; private final BusinessTime businessTime;
+ public SaleService(SaleRepository sales,ProductRepository products,CustomerRepository customers,CurrentUserService current,ShopRepository shops,CustomerService customerService,com.dukankhata.inventory.InventoryService inventory,StaffRepository staff,StaffService staffService,com.dukankhata.notification.automation.AutomatedNotificationService automatedNotifications,BusinessTime businessTime){this.sales=sales;this.products=products;this.customers=customers;this.current=current;this.shops=shops;this.customerService=customerService;this.inventory=inventory;this.staff=staff;this.staffService=staffService;this.automatedNotifications=automatedNotifications;this.businessTime=businessTime;}
  @Transactional public SaleResponse create(CreateSaleRequest r){
   UUID shopId=current.shopId(); Shop shop=shops.findByIdForUpdate(shopId).orElseThrow(()->new ResourceNotFoundException("Shop not found"));
   Staff seller=null; if(r.sellerId()!=null) seller=staff.findByIdAndShopIdAndActiveTrue(r.sellerId(),shopId).orElseThrow(()->new ResourceNotFoundException("Staff seller not found"));
   Customer customer=null; if(r.customerId()!=null) customer=customers.findByIdAndShopIdAndActiveTrue(r.customerId(),shopId).orElseThrow(()->new ResourceNotFoundException("Customer not found"));
-  Sale sale=new Sale(); sale.setShop(shop); sale.setCustomer(customer); sale.setSeller(seller); sale.setInvoiceNumber(nextInvoice(shopId,LocalDate.now(ZoneId.of("Asia/Kolkata"))));
+  Sale sale=new Sale(); sale.setShop(shop); sale.setCustomer(customer); sale.setSeller(seller); sale.setInvoiceNumber(nextInvoice(shopId,businessTime.today()));
   BigDecimal subtotal=BigDecimal.ZERO, taxable=BigDecimal.ZERO, cgst=BigDecimal.ZERO, sgst=BigDecimal.ZERO, igst=BigDecimal.ZERO;
   boolean interstate = customer != null && customer.getStateCode()!=null && shop.getStateCode()!=null && !shop.getStateCode().equals(customer.getStateCode());
   for(var req:r.items()){
