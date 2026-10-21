@@ -1,4 +1,3 @@
-
 server:
   port: ${PORT:8080}
   shutdown: graceful
@@ -42,12 +41,14 @@ spring:
   jackson:
     time-zone: Asia/Kolkata
     default-property-inclusion: non_null
+
   mvc:
     problemdetails:
       enabled: true
 
 security:
   jwt:
+    # Replace the local fallback for production via Render environment settings.
     secret: ${JWT_SECRET:local-only-change-this-secret-to-a-random-32-byte-value}
     expiration-ms: 86400000
 
