@@ -35,6 +35,7 @@ class ProductionSchemaConfigurationTest {
         environment.getPropertySources().addLast(base);
 
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
+        assertThat(production.getProperty("server.port")).isEqualTo("${PORT:8080}");
         assertThat(environment.getProperty("spring.datasource.hikari.data-source-properties.sslmode")).isEqualTo("verify-full");
         assertThat(environment.getProperty("spring.datasource.hikari.data-source-properties.sslrootcert"))
                 .isEqualTo("C:/test-only/supabase-root.crt");

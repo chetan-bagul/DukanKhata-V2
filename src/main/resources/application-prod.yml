@@ -47,3 +47,6 @@ management:
       group:
         readiness:
           include: readinessState,db,redis,mappedSchema
+
+server:
+  port: ${PORT:8080}
