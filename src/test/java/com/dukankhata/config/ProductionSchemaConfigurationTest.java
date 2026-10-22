@@ -50,6 +50,7 @@ class ProductionSchemaConfigurationTest {
         assertThat(environment.getProperty("spring.data.redis.connect-timeout")).isEqualTo("2s");
         assertThat(environment.getProperty("spring.data.redis.timeout")).isEqualTo("2s");
         assertThat(environment.getProperty("management.endpoint.health.show-details")).isEqualTo("never");
+        assertThat(environment.getProperty("management.endpoint.health.probes.enabled", Boolean.class)).isTrue();
         assertThat(environment.getProperty("management.endpoint.health.group.readiness.include"))
                 .isEqualTo("readinessState,db,redis,mappedSchema");
         assertThat(production.getProperty("spring.datasource.url")).isEqualTo("${DB_URL}");
@@ -104,5 +105,22 @@ class ProductionSchemaConfigurationTest {
         assertThat(resolver.resolveRequiredPlaceholders(
                 base.getProperty("spring.jpa.hibernate.ddl-auto").toString()))
                 .isEqualTo("validate");
+        assertThat(base.getProperty("spring.datasource.url")).isEqualTo("${DB_URL}");
+        assertThat(base.getProperty("spring.datasource.username")).isEqualTo("${DB_USERNAME}");
+        assertThat(base.getProperty("spring.datasource.password")).isEqualTo("${DB_PASSWORD}");
+        assertThat(base.getProperty("spring.profiles.default")).isEqualTo("local");
+    }
+
+    @Test
+    void localProfileUsesConfiguredServicesWithoutProductionTls() throws Exception {
+        var local = new YamlPropertySourceLoader()
+                .load("application-local", new ClassPathResource("application-local.yml")).getFirst();
+
+        assertThat(local.getProperty("spring.datasource.url")).isEqualTo("${DB_URL}");
+        assertThat(local.getProperty("spring.datasource.username")).isEqualTo("${DB_USERNAME}");
+        assertThat(local.getProperty("spring.data.redis.url")).isEqualTo("${REDIS_URL}");
+        assertThat(local.getProperty("security.jwt.secret")).isEqualTo("${JWT_SECRET}");
+        assertThat(local.getProperty("spring.datasource.hikari.data-source-properties.sslrootcert")).isNull();
+        assertThat(local.getProperty("spring.data.redis.ssl.enabled")).isNull();
     }
 }
