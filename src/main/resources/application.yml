@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    default: local
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -11,8 +13,6 @@ spring:
       idle-timeout: 300000
       max-lifetime: 1500000
       data-source-properties:
-        sslmode: verify-full
-        sslrootcert: ${DB_SSL_ROOT_CERT}
         connectTimeout: 10
         socketTimeout: 45
         options: -c statement_timeout=30000
@@ -24,8 +24,6 @@ spring:
       url: ${REDIS_URL}
       connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
       timeout: ${REDIS_TIMEOUT:2s}
-      ssl:
-        enabled: true
 
 security:
   jwt:
@@ -43,6 +41,8 @@ app:
 management:
   endpoint:
     health:
+      probes:
+        enabled: true
       show-details: never
       group:
         readiness:
