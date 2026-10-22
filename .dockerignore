@@ -5,5 +5,10 @@
 target
 .env
 .env.*
+etc
+*.pem
+*.crt
+*.cer
+*.key
 *.log
 logs

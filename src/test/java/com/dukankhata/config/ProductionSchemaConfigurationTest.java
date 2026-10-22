@@ -52,7 +52,7 @@ class ProductionSchemaConfigurationTest {
         assertThat(environment.getProperty("management.endpoint.health.show-details")).isEqualTo("never");
         assertThat(environment.getProperty("management.endpoint.health.probes.enabled", Boolean.class)).isTrue();
         assertThat(environment.getProperty("management.endpoint.health.group.readiness.include"))
-                .isEqualTo("readinessState,db,redis,mappedSchema");
+                .isEqualTo("db,redis,mappedSchema");
         assertThat(production.getProperty("spring.datasource.url")).isEqualTo("${DB_URL}");
         assertThat(production.getProperty("spring.datasource.username")).isEqualTo("${DB_USERNAME}");
         assertThat(production.getProperty("spring.datasource.password")).isEqualTo("${DB_PASSWORD}");
@@ -112,7 +112,7 @@ class ProductionSchemaConfigurationTest {
     }
 
     @Test
-    void localProfileUsesConfiguredServicesWithoutProductionTls() throws Exception {
+    void localProfileUsesConfiguredServicesWithVerifiedSupabaseTls() throws Exception {
         var local = new YamlPropertySourceLoader()
                 .load("application-local", new ClassPathResource("application-local.yml")).getFirst();
 
@@ -120,7 +120,20 @@ class ProductionSchemaConfigurationTest {
         assertThat(local.getProperty("spring.datasource.username")).isEqualTo("${DB_USERNAME}");
         assertThat(local.getProperty("spring.data.redis.url")).isEqualTo("${REDIS_URL}");
         assertThat(local.getProperty("security.jwt.secret")).isEqualTo("${JWT_SECRET}");
-        assertThat(local.getProperty("spring.datasource.hikari.data-source-properties.sslrootcert")).isNull();
+        assertThat(local.getProperty("spring.datasource.hikari.data-source-properties.sslmode")).isEqualTo("verify-full");
+        assertThat(local.getProperty("spring.datasource.hikari.data-source-properties.sslrootcert")).isEqualTo("${DB_SSL_ROOT_CERT}");
         assertThat(local.getProperty("spring.data.redis.ssl.enabled")).isNull();
+    }
+
+    @Test
+    void renderBlueprintUsesProductionProfileAndReadinessHealthCheck() throws Exception {
+        var render = new YamlPropertySourceLoader()
+                .load("render", new org.springframework.core.io.FileSystemResource("render.yaml")).getFirst();
+
+        assertThat(render.getProperty("services[0].runtime")).isEqualTo("docker");
+        assertThat(render.getProperty("services[0].healthCheckPath"))
+                .isEqualTo("/actuator/health/readiness");
+        assertThat(render.getProperty("services[0].envVars[0].value")).isEqualTo("prod");
+        assertThat(render.getProperty("services[0].envVars[6].generateValue")).isEqualTo(true);
     }
 }

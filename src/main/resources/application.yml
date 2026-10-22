@@ -46,4 +46,4 @@ management:
       show-details: never
       group:
         readiness:
-          include: readinessState,db,redis,mappedSchema
+          include: db,redis,mappedSchema

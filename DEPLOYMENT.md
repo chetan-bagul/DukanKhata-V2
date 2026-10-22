@@ -23,9 +23,13 @@ docker compose -p dukankhata-test -f docker-compose.test.yml logs app
 docker compose -p dukankhata-test -f docker-compose.test.yml down
 ```
 
-The readiness group checks the process readiness state, PostgreSQL, and Redis. Graceful shutdown allows up to 20 seconds per shutdown phase; Compose allows 30 seconds before killing the container. The final `down` removes this test project's containers and network; it has no volumes to delete.
+The readiness group checks PostgreSQL, Redis, and the mapped-schema health indicator. Graceful shutdown allows up to 20 seconds per shutdown phase; Compose allows 30 seconds before killing the container. The final `down` removes this test project's containers and network; it has no volumes to delete.
 
 ## Production deployment
+
+### Render Blueprint
+
+The repository-root `render.yaml` defines a Docker web service and uses `/actuator/health/readiness` for Render's deployment health check. Connect the GitHub repository in Render with **New > Blueprint**, select the branch containing `render.yaml`, and provide the prompted database, Redis, CORS, and Razorpay values. The Blueprint generates `JWT_SECRET`; do not replace it with a value exposed in chat or source control. For an existing Render service, `sync: false` does not prompt again; set any missing values in that service's Environment page. Upload the current Supabase root CA as a Render Secret File named `supabase-root.crt`; Render makes it available at `/etc/secrets/supabase-root.crt`, which is the configured `DB_SSL_ROOT_CERT` path. The Docker image's non-root user is added to group 1000 so it can read Render-mounted secret files without making the certificate world-readable. Do not put the certificate in Git or the Docker build context. Run the one-time Supabase schema setup below before the first deploy; Render does not create or migrate the external Supabase database.
 
 - Set `SPRING_PROFILES_ACTIVE=prod`. Hibernate runs `validate`; it never creates or updates the schema. Automatic Flyway execution is disabled in all application profiles. Do not set `FLYWAY_ENABLED` or `SPRING_FLYWAY_ENABLED` to true; initialize a new dedicated database with the one-time procedure below.
 - The Docker image defaults to the `prod` profile. The disposable Compose test stack explicitly selects the `test` profile and uses test-only credentials.

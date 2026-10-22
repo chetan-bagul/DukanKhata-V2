@@ -11,6 +11,8 @@ dist/
 out/
 .gradle/
 *.pem
+*.crt
+*.cer
 *.key
 *.ppk
 *.p12
